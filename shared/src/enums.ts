@@ -1,0 +1,26 @@
+export enum Role {
+  ADMIN = 'ADMIN',
+  TECHNICIAN = 'TECHNICIAN',
+  REQUESTER = 'REQUESTER',
+  VIEWER = 'VIEWER',
+}
+
+export enum EquipmentStatus {
+  OPERATIONAL = 'OPERATIONAL',
+  NEEDS_MAINTENANCE = 'NEEDS_MAINTENANCE',
+  BROKEN = 'BROKEN',
+  DEACTIVATED = 'DEACTIVATED',
+}
+
+export enum MaintenanceType {
+  PREVENTIVE = 'PREVENTIVE',
+  CORRECTIVE = 'CORRECTIVE',
+  CLEANING = 'CLEANING',
+}
+
+export enum MaintenanceStatus {
+  SCHEDULED = 'SCHEDULED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}
