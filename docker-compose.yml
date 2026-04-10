@@ -1,0 +1,26 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      UPLOAD_DIR: ./uploads
+    volumes:
+      - uploads:/app/backend/uploads
+      - ./backend/firebase-service-account.json:/app/backend/firebase-service-account.json:ro
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5200:80"
+    depends_on:
+      - backend
+
+volumes:
+  uploads:

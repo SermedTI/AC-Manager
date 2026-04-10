@@ -1,0 +1,208 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  TECHNICIAN
+  REQUESTER
+  VIEWER
+}
+
+enum EquipmentStatus {
+  OPERATIONAL
+  NEEDS_MAINTENANCE
+  BROKEN
+  DEACTIVATED
+}
+
+enum MaintenanceType {
+  PREVENTIVE
+  CORRECTIVE
+  CLEANING
+}
+
+enum MaintenanceStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String?
+  name      String
+  role      Role     @default(VIEWER)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  maintenanceRecords MaintenanceRecord[] @relation("performedBy")
+  requestedRecords   MaintenanceRecord[] @relation("requestedBy")
+  createdEquipment   Equipment[]         @relation("createdBy")
+  devicePushTokens   DevicePushToken[]
+
+  @@map("users")
+}
+
+model Unit {
+  id        String   @id @default(uuid())
+  name      String
+  address   String?
+  city      String?
+  state     String?
+  notes     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  equipment Equipment[]
+
+  @@index([name])
+  @@map("units")
+}
+
+model Equipment {
+  id           String          @id @default(uuid())
+  tag          String          @unique
+  brand        String
+  model        String
+  serialNumber String?         @map("serial_number")
+  btuCapacity  Int?            @map("btu_capacity")
+  type         String?
+  installDate  DateTime?       @map("install_date")
+  location     String?
+  status       EquipmentStatus @default(OPERATIONAL)
+  qrCodeUrl    String?         @map("qr_code_url")
+  notes        String?
+  active       Boolean         @default(true)
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  unitId      String @map("unit_id")
+  unit        Unit   @relation(fields: [unitId], references: [id])
+
+  createdById String? @map("created_by_id")
+  createdBy   User?   @relation("createdBy", fields: [createdById], references: [id])
+
+  maintenancePlans   MaintenancePlan[]
+  maintenanceRecords MaintenanceRecord[]
+  attachments        Attachment[]
+
+  @@index([unitId])
+  @@map("equipment")
+}
+
+model MaintenancePlan {
+  id           String          @id @default(uuid())
+  title        String
+  description  String?
+  type         MaintenanceType
+  intervalDays Int             @map("interval_days")
+  nextDueDate  DateTime        @map("next_due_date")
+  active       Boolean         @default(true)
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  equipmentId String @map("equipment_id")
+  equipment   Equipment @relation(fields: [equipmentId], references: [id])
+
+  maintenanceRecords MaintenanceRecord[]
+
+  @@map("maintenance_plans")
+}
+
+model MaintenanceRecord {
+  id            String            @id @default(uuid())
+  title         String
+  description   String?
+  type          MaintenanceType
+  status        MaintenanceStatus @default(SCHEDULED)
+  scheduledDate DateTime          @map("scheduled_date")
+  completedDate DateTime?         @map("completed_date")
+  cost          Decimal?          @db.Decimal(10, 2)
+  notes         String?
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  equipmentId   String @map("equipment_id")
+  equipment     Equipment @relation(fields: [equipmentId], references: [id])
+
+  performedById String? @map("performed_by_id")
+  performedBy   User?   @relation("performedBy", fields: [performedById], references: [id])
+
+  requestedById String? @map("requested_by_id")
+  requestedBy   User?   @relation("requestedBy", fields: [requestedById], references: [id])
+
+  planId String?          @map("plan_id")
+  plan   MaintenancePlan? @relation(fields: [planId], references: [id])
+
+  attachments            Attachment[]
+  pushNotificationEvents PushNotificationEvent[]
+
+  @@index([performedById, status])
+  @@index([scheduledDate])
+  @@index([equipmentId])
+  @@map("maintenance_records")
+}
+
+model Attachment {
+  id        String   @id @default(uuid())
+  fileName  String   @map("file_name")
+  fileUrl   String   @map("file_url")
+  fileType  String   @map("file_type")
+  fileSize  Int      @map("file_size")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  equipmentId         String?            @map("equipment_id")
+  equipment           Equipment?         @relation(fields: [equipmentId], references: [id])
+
+  maintenanceRecordId String?            @map("maintenance_record_id")
+  maintenanceRecord   MaintenanceRecord? @relation(fields: [maintenanceRecordId], references: [id])
+
+  @@map("attachments")
+}
+
+model DevicePushToken {
+  id         String   @id @default(uuid())
+  token      String   @unique
+  platform   String
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  lastSeenAt DateTime @default(now()) @map("last_seen_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, active])
+  @@map("device_push_tokens")
+}
+
+model PushNotificationEvent {
+  id                String    @id @default(uuid())
+  eventType         String    @map("event_type")
+  title             String
+  body              String
+  attemptCount      Int       @default(0) @map("attempt_count")
+  processingStartedAt DateTime? @map("processing_started_at")
+  deliveredAt       DateTime? @map("delivered_at")
+  lastError         String?   @map("last_error")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  targetUserId      String?   @map("target_user_id")
+
+  maintenanceRecordId String?            @map("maintenance_record_id")
+  maintenanceRecord   MaintenanceRecord? @relation(fields: [maintenanceRecordId], references: [id], onDelete: Cascade)
+
+  @@unique([eventType, maintenanceRecordId])
+  @@index([deliveredAt, processingStartedAt, createdAt])
+  @@map("push_notification_events")
+}
