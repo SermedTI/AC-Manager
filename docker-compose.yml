@@ -4,21 +4,13 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     restart: unless-stopped
-    ports:
-      - "3333:3333"
     env_file:
       - .env
     environment:
-      # Override para apontar ao banco do compose (descomente se usar o serviço db abaixo)
-      # DATABASE_URL: postgresql://postgres:postgres@db:5432/ac_management
       UPLOAD_DIR: ./uploads
     volumes:
       - uploads:/app/backend/uploads
-      # Montar o service account do Firebase como secret (se usar arquivo)
       - ./backend/firebase-service-account.json:/app/backend/firebase-service-account.json:ro
-    depends_on:
-      db:
-        condition: service_healthy
 
   frontend:
     build:
@@ -26,27 +18,9 @@ services:
       dockerfile: frontend/Dockerfile
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "5200:80"
     depends_on:
       - backend
 
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: ac_management
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
 volumes:
-  pgdata:
   uploads:
